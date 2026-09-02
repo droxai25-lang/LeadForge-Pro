@@ -1,0 +1,17 @@
+{
+  "threshold": 0,
+  "reporters": ["console", "threshold"],
+  "minLines": 10,
+  "minTokens": 70,
+  "formats": ["typescript", "tsx", "javascript"],
+  "ignore": [
+    "**/.agents/**",
+    "**/.claude/**",
+    "**/.clinerules/**",
+    "**/.windsurf/**",
+    "**/backups/**",
+    "**/dist/**",
+    "**/generated/**",
+    "**/node_modules/**"
+  ]
+}

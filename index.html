@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>LeadForge Pro - GTM Pipeline & Enrichment Engine</title>
+    <meta name="description" content="Production B2B lead generation, real-time DNS MX deliverability verification, ICP fit scoring, and AI outreach engine." />
+    <meta property="og:title" content="LeadForge Pro - GTM Pipeline & Enrichment Engine" />
+    <meta property="og:description" content="Production B2B lead generation, real-time DNS MX deliverability verification, ICP fit scoring, and AI outreach engine." />
+    <meta property="og:type" content="website" />
+    <meta name="twitter:card" content="summary_large_image" />
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+    <script>
+      // Register Service Worker for offline support and caching
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('/service-worker.js', { scope: '/' })
+          .then(reg => console.log('✓ Service Worker registered'))
+          .catch(err => console.error('Service Worker registration failed:', err));
+      }
+    </script>
+  </body>
+</html>

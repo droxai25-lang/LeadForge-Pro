@@ -1,0 +1,6 @@
+npm notice run leadforge-pro@0.0.0 prebuild
+npm notice run npm run prisma:generate
+npm notice run leadforge-pro@0.0.0 prisma:generate
+npm notice run prisma generate
+'prisma' is not recognized as an internal or external command,
+operable program or batch file.

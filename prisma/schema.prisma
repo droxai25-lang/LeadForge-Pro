@@ -1,0 +1,838 @@
+datasource db {
+  provider = "postgresql"
+}
+
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+enum SeniorityLevel {
+  c_level
+  vp
+  director
+  manager
+  individual_contributor
+  unknown
+}
+
+enum UserRole {
+  developer_admin
+  sales_director
+  sdr_operator
+  read_only
+}
+
+enum CampaignStatus {
+  draft
+  active
+  paused
+  completed
+  archived
+}
+
+enum CampaignEnrollmentStatus {
+  active
+  paused
+  completed
+  unsubscribed
+  bounced
+  complained
+  failed
+  cancelled
+}
+
+enum SuppressionReason {
+  unsubscribe
+  hard_bounce
+  complaint
+  manual
+  invalid_address
+}
+
+enum DeliveryEventType {
+  delivered
+  hard_bounce
+  soft_bounce
+  complaint
+  unsubscribe
+}
+
+enum CrawlOutcome {
+  found
+  not_found
+  rate_limited
+  blocked
+  failed
+}
+
+enum ManagedClientStatus {
+  active
+  paused
+  archived
+}
+
+enum ClientExclusionType {
+  email
+  domain
+  company
+}
+
+enum LeadReviewStatus {
+  pending
+  approved
+  rejected
+}
+
+enum DeliveryBatchFormat {
+  csv
+  json
+}
+
+enum DeliveryBatchStatus {
+  prepared
+  exported
+  delivered
+  purged
+}
+
+enum LeadSourceType {
+  unknown
+  manual
+  batch
+  csv
+  crawl
+  waterfall
+  api
+  hunter
+}
+
+enum DiscoveryRunStatus {
+  queued
+  running
+  completed
+  partial
+  failed
+  cancel_requested
+  cancelled
+}
+
+enum DiscoveryOutcome {
+  found
+  not_found
+  rate_limited
+  blocked
+  failed
+}
+
+enum DiscoveryCompanyStatus {
+  discovered
+  researching
+  completed
+  no_contacts
+  failed
+}
+
+enum DiscoveryContactStatus {
+  discovered
+  promoted
+  duplicate
+  invalid
+}
+
+enum ProspectQualificationStatus {
+  pending
+  qualified
+  disqualified
+  insufficient_evidence
+  failed
+}
+
+model Organization {
+  id        String   @id @default(uuid())
+  name      String
+  domain    String   @unique
+  plan      String   @default("enterprise")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  users              User[]
+  accounts           Account[]
+  leads              Lead[]
+  activityLogs       ActivityLog[]
+  mailboxes          Mailbox[]
+  outboundMessages   OutboundDispatch[]
+  inboundReplies     InboundReply[]
+  campaigns          Campaign[]
+  enrollments        CampaignEnrollment[]
+  suppressions       Suppression[]
+  deliveryEvents     DeliveryProviderEvent[]
+  crawlEvidence      CrawlEvidence[]
+  managedClients     ManagedClient[]
+  clientExclusions   ClientExclusion[]
+  leadReviews        LeadReview[]
+  deliveryBatches    DeliveryBatch[]
+  discoveryRuns      DiscoveryRun[]
+  discoveryCompanies DiscoveryCompany[]
+  discoveryContacts  DiscoveryContact[]
+  opportunitySignals OpportunitySignal[]
+  discoveryAutopilot DiscoveryAutopilot?
+}
+
+model User {
+  id             String    @id @default(uuid())
+  organizationId String?
+  email          String    @unique
+  name           String
+  passwordHash   String
+  role           UserRole  @default(sdr_operator)
+  isDeveloper    Boolean   @default(false)
+  lastLoginAt    DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  organization Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  refreshTokens       RefreshToken[]
+  passwordResetTokens PasswordResetToken[]
+  leadReviews         LeadReview[]
+  preparedBatches     DeliveryBatch[]
+  discoveryRuns       DiscoveryRun[]
+
+  @@index([organizationId])
+}
+
+model RefreshToken {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String   @unique
+  revoked   Boolean  @default(false)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
+model PasswordResetToken {
+  id        String    @id @default(uuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String    @unique
+  usedAt    DateTime?
+  expiresAt DateTime
+  createdAt DateTime  @default(now())
+
+  @@index([userId])
+}
+
+model Account {
+  id               String    @id @default(uuid())
+  organizationId   String
+  companyName      String
+  domain           String
+  industry         String?
+  employeeCount    Int?
+  annualRevenueUsd Float?
+  websiteUrl       String?
+  publicEmail      String?
+  phone            String?
+  streetAddress    String?
+  description      String?
+  country          String?
+  state            String?
+  city             String?
+  sourceProvider   String?
+  sourceReference  String?
+  sourceUrls       String[]  @default([])
+  sourceObservedAt DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  organization       Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  leads              Lead[]
+  crawlEvidence      CrawlEvidence[]
+  discoveryCompanies DiscoveryCompany[]
+
+  @@unique([organizationId, domain])
+}
+
+model Lead {
+  id                    String         @id @default(uuid())
+  organizationId        String
+  accountId             String?
+  firstName             String
+  lastName              String?
+  email                 String
+  phone                 String?
+  jobTitle              String
+  seniority             SeniorityLevel @default(unknown)
+  companyName           String
+  companyDomain         String
+  industry              String?
+  employeeCount         Int?
+  annualRevenueUsd      Float?
+  stage                 String         @default("discovered")
+  verificationStatus    String         @default("unverified")
+  fitScore              Float          @default(50.0)
+  engagementScore       Float          @default(0)
+  isQualified           Boolean        @default(false)
+  mxHosts               String[]       @default([])
+  aiEmailDraft          String?
+  personalizationPrompt String?
+  linkedinUrl           String?
+  lastContactedAt       DateTime?
+  sentCount             Int            @default(0)
+  sourceType            LeadSourceType @default(unknown)
+  sourceReference       String?
+  sourceObservedAt      DateTime?
+  createdAt             DateTime       @default(now())
+  updatedAt             DateTime       @updatedAt
+
+  organization      Organization         @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  account           Account?             @relation(fields: [accountId], references: [id], onDelete: SetNull)
+  outboundMessages  OutboundDispatch[]
+  inboundReplies    InboundReply[]
+  enrollments       CampaignEnrollment[]
+  crawlEvidence     CrawlEvidence[]
+  leadReviews       LeadReview[]
+  discoveryContacts DiscoveryContact[]
+
+  @@unique([organizationId, email])
+  @@index([organizationId, verificationStatus])
+  @@index([organizationId, stage])
+  @@index([organizationId, sourceType])
+}
+
+model Mailbox {
+  id              String   @id @default(uuid())
+  organizationId  String
+  email           String
+  senderName      String
+  host            String
+  port            Int
+  secure          Boolean  @default(false)
+  username        String
+  passwordHash    String?
+  dailySendLimit  Int      @default(150)
+  sentTodayCount  Int      @default(0)
+  warmupEnabled   Boolean  @default(false)
+  warmupStageDay  Int      @default(1)
+  reputationScore Float    @default(0)
+  status          String   @default("inactive")
+  spfStatus       String   @default("unverified")
+  dkimStatus      String   @default("unverified")
+  dmarcStatus     String   @default("unverified")
+  lastError       String?
+  lastCheckedAt   DateTime @default(now())
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  organization     Organization         @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  outboundMessages OutboundDispatch[]
+  inboundReplies   InboundReply[]
+  campaigns        Campaign[]
+  enrollments      CampaignEnrollment[]
+
+  @@index([organizationId])
+}
+
+model OutboundDispatch {
+  id                         String    @id @default(uuid())
+  organizationId             String
+  mailboxId                  String
+  leadId                     String?
+  campaignId                 String?
+  campaignStepId             String?
+  enrollmentId               String?
+  inboundReplyId             String?
+  idempotencyKey             String?   @unique
+  recipientEmail             String
+  subject                    String
+  bodyText                   String?
+  bodyHtml                   String
+  trackOpens                 Boolean   @default(false)
+  trackClicks                Boolean   @default(false)
+  status                     String    @default("queued")
+  scheduledFor               DateTime?
+  lastAttemptAt              DateTime?
+  attemptsCount              Int       @default(0)
+  providerMessageId          String?
+  providerResponse           String?
+  providerAcceptedRecipients Json?
+  providerRejectedRecipients Json?
+  openedAt                   DateTime?
+  clickedAt                  DateTime?
+  deliveredAt                DateTime?
+  bouncedAt                  DateTime?
+  complainedAt               DateTime?
+  opensCount                 Int       @default(0)
+  clicksCount                Int       @default(0)
+  errorMessage               String?
+  sentAt                     DateTime?
+  createdAt                  DateTime  @default(now())
+  updatedAt                  DateTime  @updatedAt
+
+  organization   Organization            @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  mailbox        Mailbox                 @relation(fields: [mailboxId], references: [id], onDelete: Cascade)
+  lead           Lead?                   @relation(fields: [leadId], references: [id], onDelete: SetNull)
+  campaign       Campaign?               @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  campaignStep   CampaignStep?           @relation(fields: [campaignStepId], references: [id], onDelete: SetNull)
+  enrollment     CampaignEnrollment?     @relation(fields: [enrollmentId], references: [id], onDelete: SetNull)
+  deliveryEvents DeliveryProviderEvent[]
+
+  @@index([organizationId])
+  @@index([mailboxId, status])
+  @@index([campaignId, status, scheduledFor])
+  @@index([enrollmentId, status])
+  @@index([providerMessageId])
+}
+
+model Campaign {
+  id                String         @id @default(uuid())
+  organizationId    String
+  mailboxId         String?
+  name              String
+  description       String?
+  status            CampaignStatus @default(draft)
+  dailySendingLimit Int            @default(50)
+  trackOpens        Boolean        @default(true)
+  trackClicks       Boolean        @default(true)
+  launchedAt        DateTime?
+  pausedAt          DateTime?
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+
+  organization Organization         @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  mailbox      Mailbox?             @relation(fields: [mailboxId], references: [id], onDelete: SetNull)
+  steps        CampaignStep[]
+  enrollments  CampaignEnrollment[]
+  dispatches   OutboundDispatch[]
+
+  @@index([organizationId, status])
+  @@index([mailboxId])
+}
+
+model CampaignStep {
+  id              String   @id @default(uuid())
+  campaignId      String
+  stepNumber      Int
+  delayDays       Int      @default(0)
+  subject         String
+  body            String
+  tone            String?
+  framework       String?
+  targetPainPoint String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  campaign   Campaign           @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  dispatches OutboundDispatch[]
+
+  @@unique([campaignId, stepNumber])
+  @@index([campaignId])
+}
+
+model CampaignEnrollment {
+  id                String                   @id @default(uuid())
+  organizationId    String
+  campaignId        String
+  leadId            String
+  mailboxId         String
+  status            CampaignEnrollmentStatus @default(active)
+  currentStepNumber Int                      @default(0)
+  nextSendAt        DateTime?
+  lastSentAt        DateTime?
+  completedAt       DateTime?
+  stoppedAt         DateTime?
+  stopReason        String?
+  createdAt         DateTime                 @default(now())
+  updatedAt         DateTime                 @updatedAt
+
+  organization Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  campaign     Campaign           @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  lead         Lead               @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  mailbox      Mailbox            @relation(fields: [mailboxId], references: [id], onDelete: Cascade)
+  dispatches   OutboundDispatch[]
+
+  @@unique([campaignId, leadId])
+  @@index([organizationId, status])
+  @@index([campaignId, status, nextSendAt])
+  @@index([leadId])
+}
+
+model Suppression {
+  id             String            @id @default(uuid())
+  organizationId String
+  email          String
+  reason         SuppressionReason
+  source         String
+  sourceEventId  String?
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, email])
+  @@index([organizationId, reason])
+}
+
+model DeliveryProviderEvent {
+  id             String            @id @default(uuid())
+  organizationId String
+  provider       String
+  eventId        String
+  eventType      DeliveryEventType
+  recipientEmail String
+  dispatchId     String?
+  payload        Json?
+  receivedAt     DateTime          @default(now())
+  processingAt   DateTime?
+  processedAt    DateTime?
+
+  organization Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  dispatch     OutboundDispatch? @relation(fields: [dispatchId], references: [id], onDelete: SetNull)
+
+  @@unique([provider, eventId])
+  @@index([organizationId, eventType])
+  @@index([dispatchId])
+}
+
+model CrawlEvidence {
+  id                String       @id @default(uuid())
+  organizationId    String
+  accountId         String?
+  leadId            String?
+  domain            String
+  requestedUrl      String
+  finalUrl          String?
+  outcome           CrawlOutcome
+  httpStatus        Int?
+  contentType       String?
+  snapshotSha256    String?
+  snapshotBytes     Int          @default(0)
+  snapshotTruncated Boolean      @default(false)
+  robotsAllowed     Boolean?
+  responseHeaders   Json?
+  rawSnapshot       String?
+  extractedData     Json?
+  errorCode         String?
+  errorMessage      String?
+  fetchedAt         DateTime?
+  createdAt         DateTime     @default(now())
+
+  organization       Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  account            Account?            @relation(fields: [accountId], references: [id], onDelete: SetNull)
+  lead               Lead?               @relation(fields: [leadId], references: [id], onDelete: SetNull)
+  opportunitySignals OpportunitySignal[]
+
+  @@index([organizationId, domain, createdAt])
+  @@index([organizationId, outcome, createdAt])
+  @@index([accountId])
+  @@index([leadId])
+}
+
+model InboundReply {
+  id              String    @id @default(uuid())
+  organizationId  String
+  mailboxId       String
+  leadId          String?
+  fromEmail       String
+  fromName        String
+  subject         String
+  bodyText        String
+  sentiment       String    @default("neutral")
+  sentimentScore  Float     @default(50.0)
+  suggestedAction String    @default("forward_sdr")
+  autoDraftReply  String
+  status          String    @default("pending_review")
+  receivedAt      DateTime  @default(now())
+  reviewedAt      DateTime?
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  mailbox      Mailbox      @relation(fields: [mailboxId], references: [id], onDelete: Cascade)
+  lead         Lead?        @relation(fields: [leadId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId])
+  @@index([mailboxId, status])
+}
+
+model ActivityLog {
+  id             String   @id @default(uuid())
+  organizationId String
+  actionType     String
+  operatorEmail  String
+  operatorRole   String
+  targetCount    Int      @default(1)
+  description    String
+  status         String   @default("success")
+  metadata       Json?
+  timestamp      DateTime @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, timestamp])
+}
+
+model ManagedClient {
+  id                   String              @id @default(uuid())
+  organizationId       String
+  name                 String
+  contactName          String?
+  contactEmail         String?
+  targetProfile        Json
+  defaultRetentionDays Int                 @default(90)
+  status               ManagedClientStatus @default(active)
+  createdAt            DateTime            @default(now())
+  updatedAt            DateTime            @updatedAt
+
+  organization  Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  exclusions    ClientExclusion[]
+  reviews       LeadReview[]
+  batches       DeliveryBatch[]
+  discoveryRuns DiscoveryRun[]
+
+  @@unique([organizationId, name])
+  @@index([organizationId, status])
+}
+
+model ClientExclusion {
+  id             String              @id @default(uuid())
+  organizationId String
+  clientId       String
+  type           ClientExclusionType
+  value          String
+  reason         String?
+  createdAt      DateTime            @default(now())
+
+  organization Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  client       ManagedClient @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  @@unique([clientId, type, value])
+  @@index([organizationId, clientId])
+}
+
+model LeadReview {
+  id             String           @id @default(uuid())
+  organizationId String
+  clientId       String
+  leadId         String
+  status         LeadReviewStatus @default(pending)
+  notes          String?
+  reviewedById   String?
+  reviewedAt     DateTime?
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+
+  organization Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  client       ManagedClient @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  lead         Lead          @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  reviewedBy   User?         @relation(fields: [reviewedById], references: [id], onDelete: SetNull)
+
+  @@unique([clientId, leadId])
+  @@index([organizationId, clientId, status])
+  @@index([leadId])
+}
+
+model DeliveryBatch {
+  id             String              @id @default(uuid())
+  organizationId String
+  clientId       String
+  preparedById   String?
+  format         DeliveryBatchFormat
+  status         DeliveryBatchStatus @default(prepared)
+  fileName       String
+  contentType    String
+  payloadText    String?
+  payloadSha256  String
+  recordCount    Int
+  leadIds        String[]
+  prospectIds    String[]            @default([])
+  fields         String[]
+  deliveredTo    String?
+  exportedAt     DateTime?
+  deliveredAt    DateTime?
+  retentionUntil DateTime
+  purgedAt       DateTime?
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+
+  organization Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  client       ManagedClient @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  preparedBy   User?         @relation(fields: [preparedById], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, clientId, createdAt])
+  @@index([organizationId, retentionUntil, status])
+}
+
+model DiscoveryRun {
+  id                      String             @id @default(uuid())
+  organizationId          String
+  clientId                String?
+  createdById             String?
+  provider                String             @default("hunter")
+  query                   String
+  criteria                Json
+  qualificationContract   Json?
+  companyLimit            Int
+  contactsPerCompany      Int
+  maxDomainSearches       Int
+  status                  DiscoveryRunStatus @default(queued)
+  outcome                 DiscoveryOutcome?
+  providerResultCount     Int                @default(0)
+  companiesProcessed      Int                @default(0)
+  domainSearchesPerformed Int                @default(0)
+  contactsFound           Int                @default(0)
+  leadsCreated            Int                @default(0)
+  candidatesEvaluated     Int                @default(0)
+  prospectsQualified      Int                @default(0)
+  prospectsDisqualified   Int                @default(0)
+  qualificationFailures   Int                @default(0)
+  errorCode               String?
+  errorMessage            String?
+  startedAt               DateTime?
+  completedAt             DateTime?
+  createdAt               DateTime           @default(now())
+  updatedAt               DateTime           @updatedAt
+
+  organization       Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  client             ManagedClient?      @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  createdBy          User?               @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  companies          DiscoveryCompany[]
+  contacts           DiscoveryContact[]
+  opportunitySignals OpportunitySignal[]
+
+  @@index([organizationId, createdAt])
+  @@index([organizationId, status])
+  @@index([clientId])
+}
+
+model DiscoveryAutopilot {
+  id              String    @id @default(uuid())
+  organizationId  String    @unique
+  enabled         Boolean   @default(false)
+  intervalMinutes Int       @default(1)
+  companyLimit    Int       @default(25)
+  cursor          Int       @default(0)
+  currentRunId    String?
+  lastRunId       String?
+  lastStartedAt   DateTime?
+  lastCompletedAt DateTime?
+  nextRunAt       DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([enabled, nextRunAt])
+}
+
+model DiscoveryCompany {
+  id                      String                      @id @default(uuid())
+  organizationId          String
+  runId                   String
+  accountId               String?
+  providerCompanyId       String?
+  name                    String
+  domain                  String
+  industry                String?
+  description             String?
+  employeeCount           Int?
+  city                    String?
+  state                   String?
+  country                 String?
+  websiteUrl              String
+  publicEmail             String?
+  phone                   String?
+  streetAddress           String?
+  confidence              Float?
+  datasetRelease          String?
+  sourceUrls              String[]                    @default([])
+  qualificationStatus     ProspectQualificationStatus @default(pending)
+  opportunityScore        Float?
+  evidenceQuality         Float?
+  qualificationReasons    String[]                    @default([])
+  disqualificationReasons String[]                    @default([])
+  bestContact             Json?
+  outreachAngle           String?
+  qualifiedAt             DateTime?
+  status                  DiscoveryCompanyStatus      @default(discovered)
+  outcome                 DiscoveryOutcome?
+  errorCode               String?
+  errorMessage            String?
+  observedAt              DateTime
+  createdAt               DateTime                    @default(now())
+  updatedAt               DateTime                    @updatedAt
+
+  organization       Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  run                DiscoveryRun        @relation(fields: [runId], references: [id], onDelete: Cascade)
+  account            Account?            @relation(fields: [accountId], references: [id], onDelete: SetNull)
+  contacts           DiscoveryContact[]
+  opportunitySignals OpportunitySignal[]
+
+  @@unique([runId, domain])
+  @@index([organizationId, domain])
+  @@index([accountId])
+}
+
+model OpportunitySignal {
+  id                       String   @id @default(uuid())
+  organizationId           String
+  runId                    String
+  companyId                String
+  evidenceId               String?
+  key                      String
+  title                    String
+  category                 String
+  observation              String
+  opportunity              String
+  evidenceQuality          Float
+  scoreContribution        Float    @default(0)
+  matchedQualifyingRule    Boolean  @default(false)
+  matchedDisqualifyingRule Boolean  @default(false)
+  sourceUrl                String
+  snapshotSha256           String?
+  observedAt               DateTime
+  createdAt                DateTime @default(now())
+
+  organization Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  run          DiscoveryRun     @relation(fields: [runId], references: [id], onDelete: Cascade)
+  company      DiscoveryCompany @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  evidence     CrawlEvidence?   @relation(fields: [evidenceId], references: [id], onDelete: SetNull)
+
+  @@unique([companyId, key])
+  @@index([organizationId, runId])
+  @@index([companyId, matchedQualifyingRule])
+  @@index([evidenceId])
+}
+
+model DiscoveryContact {
+  id                 String                 @id @default(uuid())
+  organizationId     String
+  runId              String
+  companyId          String
+  leadId             String?
+  email              String
+  firstName          String
+  lastName           String?
+  position           String
+  seniority          String?
+  department         String?
+  decisionMaker      Boolean                @default(false)
+  confidence         Int?
+  verificationStatus String?
+  sourceUrls         String[]               @default([])
+  status             DiscoveryContactStatus @default(discovered)
+  observedAt         DateTime
+  createdAt          DateTime               @default(now())
+  updatedAt          DateTime               @updatedAt
+
+  organization Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  run          DiscoveryRun     @relation(fields: [runId], references: [id], onDelete: Cascade)
+  company      DiscoveryCompany @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  lead         Lead?            @relation(fields: [leadId], references: [id], onDelete: SetNull)
+
+  @@unique([runId, email])
+  @@index([organizationId, email])
+  @@index([leadId])
+}

@@ -1,0 +1,3 @@
+[codespell]
+skip = */bun.lock,*/package-lock.json,*/backups/*,*/.agents/*,*/.claude/*,*/.clinerules/*,*/.windsurf/*,*/.runtime/*,*/dist/*,*/generated/*,*/node_modules/*,*/super-linter-output/*
+ignore-words-list = afterall,collison,tawk,nd

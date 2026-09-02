@@ -1,0 +1,14 @@
+node_modules
+dist
+generated
+.git
+.env
+.env.local
+npm-debug.log
+logs
+.DS_Store
+.windsurf
+.claude
+.agents
+.clinerules
+.runtime

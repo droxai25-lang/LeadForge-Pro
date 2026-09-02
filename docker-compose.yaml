@@ -1,0 +1,100 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: leadforge-app
+    restart: always
+    # Do not expose the app on 0.0.0.0 unless behind a trusted reverse proxy.
+    ports:
+      - "127.0.0.1:3000:3000"
+    environment:
+      - NODE_ENV=production
+      # The server listens on the container interface, while the published
+      # host port above remains restricted to Windows loopback.
+      - HOST=0.0.0.0
+      - CONTAINERIZED=true
+      - LOCAL_ONLY_MODE=true
+      - PORT=3000
+      - POSTGRES_APP_PASSWORD=${POSTGRES_APP_PASSWORD:?set POSTGRES_APP_PASSWORD}
+      - REDIS_URL=redis://redis:6379
+      # Required secrets — compose fails fast when any are unset or weak.
+      - OLLAMA_API_KEY=${OLLAMA_API_KEY:-}
+      - OLLAMA_BASE_URL=${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
+      - OLLAMA_MODEL=${OLLAMA_MODEL:-gemma4:31b-cloud}
+      - JWT_SECRET=${JWT_SECRET:?set a 32+ char JWT_SECRET}
+      - MAILBOX_ENCRYPTION_KEY=${MAILBOX_ENCRYPTION_KEY:?set a 64-char hex MAILBOX_ENCRYPTION_KEY}
+      - INBOUND_WEBHOOK_SECRET=${INBOUND_WEBHOOK_SECRET:?set a 32+ char INBOUND_WEBHOOK_SECRET}
+      - UNSUBSCRIBE_SECRET=${UNSUBSCRIBE_SECRET:?set a 32+ char UNSUBSCRIBE_SECRET}
+      - DELIVERY_WEBHOOK_SECRET=${DELIVERY_WEBHOOK_SECRET:?set a 32+ char DELIVERY_WEBHOOK_SECRET}
+      - OWNER_EMAILS=${OWNER_EMAILS:?set the local owner email}
+      - OWNER_PASSWORD=${OWNER_PASSWORD:?set a 12+ character local owner password}
+      - CORS_ORIGINS=
+      - APP_URL=
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - SMTP_SENDING_ENABLED=false
+      - CRAWL_EVIDENCE_RETENTION_DAYS=${CRAWL_EVIDENCE_RETENTION_DAYS:-180}
+      - HUNTER_DISCOVERY_ENABLED=${HUNTER_DISCOVERY_ENABLED:-false}
+      - HUNTER_API_KEY=${HUNTER_API_KEY:-}
+      - HUNTER_MAX_EMAIL_CREDITS_PER_RUN=${HUNTER_MAX_EMAIL_CREDITS_PER_RUN:-25}
+      - OVERTURE_DISCOVERY_ENABLED=${OVERTURE_DISCOVERY_ENABLED:-true}
+      - OVERTURE_DUCKDB_EXTENSION_DIR=/app/.runtime/duckdb_extensions
+      - GEONAMES_DATA_DIR=/app/.runtime/geonames
+    volumes:
+      - discoverydata:/app/.runtime
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:3000/api/health/live"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: leadforge-postgres
+    restart: always
+    environment:
+      POSTGRES_USER: leadforge_app
+      POSTGRES_PASSWORD: ${POSTGRES_APP_PASSWORD:?set POSTGRES_APP_PASSWORD}
+      POSTGRES_DB: leadforge_prod
+    expose:
+      - "5432"
+    ports:
+      - "127.0.0.1:${POSTGRES_HOST_PORT:-55432}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U leadforge_app -d leadforge_prod"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: leadforge-redis
+    restart: always
+    command: ["redis-server", "--bind", "0.0.0.0", "--appendonly", "yes"]
+    expose:
+      - "6379"
+    ports:
+      - "127.0.0.1:${REDIS_HOST_PORT:-56379}:6379"
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  pgdata:
+  redisdata:
+  discoverydata:

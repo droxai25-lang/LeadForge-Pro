@@ -1,0 +1,81 @@
+# Proprietary Software License — LeadForge Pro
+
+**Copyright © 2026 LeadForge Technologies, Inc. All rights reserved.**
+
+This work is protected by copyright. It is **not** open source and is **not**
+licensed under any OSI-approved or Creative Commons license.
+
+---
+
+## Grant of License
+
+By accessing or possessing a copy of this software, you are granted a limited,
+**non-exclusive, non-transferable, revocable** license to:
+
+1. **Install and run** the software on hardware you own or lawfully operate,
+  for your **own internal business purposes**; and
+2. **Make one backup copy** for archival and disaster-recovery purposes.
+
+No other rights are granted unless expressly stated in writing by the
+copyright holder.
+
+## What Is Not Permitted
+
+Without the prior **express written permission** of LeadForge Technologies,
+Inc., you may **not**:
+
+- **Copy**, reproduce, or duplicate the software or any substantial part of it;
+- **Modify** the source code, and then **redistribute** the modified or derived
+  work (a "derivative work");
+- **Sublicense, rent, lease, resell, lend, or otherwise transfer** the license
+  or the software to any third party;
+- **Use the software to provide commercial outsourcing or managed services**
+  to parties other than yourself;
+- Remove, obscure, or alter any **copyright notices**, author metadata,
+  license markers, or the license file itself; or
+- **Reverse engineer, decompile, or disassemble** the software beyond what is
+  necessary and lawful to run it, for the purpose of extracting trade secrets
+  or replicating functionality.
+
+## Ownership of Modifications
+
+Any modifications, improvements, or derivatives you create remain owned by the
+original copyright holder. You retain no ownership rights in your derivatives.
+You may not publish, sublicense, or distribute them without written consent.
+
+## No Warranty and Limitation of Liability
+
+THIS SOFTWARE IS PROVIDED **"AS IS"** WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING, BUT NOT LIMITED TO, IMPLIED WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE, AND NON-INFRINGEMENT. IN NO EVENT SHALL THE
+COPYRIGHT HOLDER BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+CONSEQUENTIAL, OR EXEMPLARY DAMAGES, OR ANY LOSS OF PROFITS, REVENUE, DATA, OR
+DATA USE, ARISING FROM OR IN CONNECTION WITH THIS SOFTWARE, EVEN IF ADVISED OF
+THE POSSIBILITY OF SUCH DAMAGES.
+
+## Confidentiality & Trade Secrets
+
+The architecture, algorithms, and implementation details of this software are
+trade secrets. You agree to take reasonable measures to protect the source code
+and documentation from unauthorized disclosure while it is in your possession.
+
+## Governing Law
+
+This license is governed by the laws of the State of California, USA, without
+regard to conflict-of-law principles. Any dispute arising from this license
+shall be resolved exclusively in the courts of that jurisdiction.
+
+## Acceptance
+
+By using, copying, or possessing the software, you acknowledge that you have
+read, understood, and agree to be bound by these terms. If you do not agree,
+you must not use the software and must destroy any copies in your possession.
+
+---
+
+*For licensing inquiries, contact the copyright holder:*
+**LeadForge Technologies, Inc. — leadforge@proprietary.example**
+
+*Any use of the trademarked name "LeadForge" is likewise governed by the
+trademark law and company policy; no transfer of trademark rights is granted
+herein.*

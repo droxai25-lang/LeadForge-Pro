@@ -1,0 +1,20 @@
+node_modules/
+build/
+dist/
+coverage/
+.git
+.DS_Store
+*.log
+logs/
+__pycache__/
+*.pyc
+.env*
+!.env.example
+
+/generated/prisma
+
+# Local database backups may contain tenant data and encrypted credentials.
+backups/
+
+# DuckDB downloads signed runtime extensions here for Overture queries.
+.runtime/
