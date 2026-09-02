@@ -1,0 +1,130 @@
+services:
+  app:
+    image: node:22-alpine
+    working_dir: /app
+    container_name: leadforge-app
+    restart: unless-stopped
+    command: sh -c "npx tsx server.ts"
+    ports:
+      - "3000:3000"
+    environment:
+      # Dev mode: NODE_ENV=development so the server boots Vite middleware
+      # (live frontend HMR) instead of serving a prebuilt bundle.
+      - NODE_ENV=development
+      - DISABLE_HMR=false
+      - HOST=0.0.0.0
+      - PORT=3000
+      - CONTAINERIZED=true
+      - LOCAL_ONLY_MODE=true
+      - SMTP_SENDING_ENABLED=false
+      - CORS_ORIGINS=
+      - APP_URL=
+      # Locally-generated crypto material (not user-supplied external secrets).
+      - JWT_SECRET=1i7VXCS0yCE6yZMKV6nuqjXcDwlwvHJ5YLhai0eo42K0B3a7wT4HolMNn2JOezk4DJMixTBsCkuWhykJQlcgsw
+      - TOKEN_HASH_SECRET=Qr553dYVBZbjCi7s5EEqIq-WY8VXZdzq1Bb-MnHXmPsFx_eYxMu8RyBk28vIok9vHePuAmdBfacw7n2ja5tuhQ
+      - MAILBOX_ENCRYPTION_KEY=6fbea0451c158b7f763539aa57ed6d9bd96a80d91f59f891b68a92a5b792cf27
+      - INBOUND_WEBHOOK_SECRET=R15CY7_f5sneXwwhZuEPQvSKD_eAu8LaUoJeDXBBkrkoopzIjr_bw-VyQfjOb5mBILXLkPzDmKEFgTageGYoIg
+      - UNSUBSCRIBE_SECRET=KxqAcEkuAZxOp_xxi9w7TLCdSy1KzAs-dpZgLHysq7CffIXT6LRNNmIFE2JSygpsxb0nkGzWVLpkVCHcn640ig
+      - DELIVERY_WEBHOOK_SECRET=o98WWn-dTsRzgRWfllp8YHvaTn_xfIHoAuTNnSez0RVGicMxENMrY04vbEdtmPuM3MAv0SSVQBBO6OC5dMUO3Q
+      - OWNER_EMAILS=owner@example.com
+      - OWNER_PASSWORD=x6allI2um8Ogo2-WO6srw_AkC6C9X_R1
+      # Local infra credentials (generated, not user-supplied).
+      - POSTGRES_APP_PASSWORD=sHXi5yEI1fW33lIeOzCGZv3uutinZalyGuMVPwKyd_I
+      - REDIS_URL=redis://redis:6379
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      # Optional external integrations — disabled by default, not required to boot.
+      - OLLAMA_API_KEY=
+      - OLLAMA_BASE_URL=http://host.docker.internal:11434
+      - OLLAMA_MODEL=llama3.2
+      - HUNTER_DISCOVERY_ENABLED=false
+      - HUNTER_API_KEY=
+      - OVERTURE_DISCOVERY_ENABLED=false
+      - OVERTURE_DUCKDB_EXTENSION_DIR=/app/.runtime/duckdb_extensions
+      - GEONAMES_DATA_DIR=/app/.runtime/geonames
+      - CRAWL_EVIDENCE_RETENTION_DAYS=180
+      - PUBLIC_REGISTRATION_ENABLED=false
+      - ENABLE_DEVELOPMENT_ROUTES=false
+    volumes:
+      - ./:/app
+      - leadforge_node_modules:/app/node_modules
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:3000/api/health/live"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
+
+  setup:
+    image: node:22-alpine
+    working_dir: /app
+    container_name: leadforge-setup
+    command: sh -c "npm install && npx prisma generate"
+    environment:
+      - POSTGRES_APP_PASSWORD=sHXi5yEI1fW33lIeOzCGZv3uutinZalyGuMVPwKyd_I
+      - CONTAINERIZED=true
+    volumes:
+      - ./:/app
+      - leadforge_node_modules:/app/node_modules
+    restart: "no"
+
+  migrate:
+    image: node:22-alpine
+    working_dir: /app
+    container_name: leadforge-migrate
+    command: sh -c "npx prisma migrate deploy"
+    environment:
+      - POSTGRES_APP_PASSWORD=sHXi5yEI1fW33lIeOzCGZv3uutinZalyGuMVPwKyd_I
+      - CONTAINERIZED=true
+    volumes:
+      - ./:/app
+      - leadforge_node_modules:/app/node_modules
+    depends_on:
+      postgres:
+        condition: service_healthy
+      setup:
+        condition: service_completed_successfully
+    restart: "no"
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: leadforge-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: leadforge_app
+      POSTGRES_PASSWORD: sHXi5yEI1fW33lIeOzCGZv3uutinZalyGuMVPwKyd_I
+      POSTGRES_DB: leadforge_prod
+    volumes:
+      - leadforge_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U leadforge_app -d leadforge_prod"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: leadforge-redis
+    restart: unless-stopped
+    command: ["redis-server", "--bind", "0.0.0.0", "--appendonly", "yes"]
+    volumes:
+      - leadforge_redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  leadforge_pgdata:
+  leadforge_redisdata:
+  leadforge_node_modules:
