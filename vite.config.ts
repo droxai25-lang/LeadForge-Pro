@@ -12,6 +12,8 @@ export default defineConfig(() => {
       }
     },
     server: {
+      // Allow the preview's external hostname (changes per environment).
+      allowedHosts: true as const,
       // HMR is disabled in hosted environments via DISABLE_HMR env var.
       // Do not modify—file watching is disabled to prevent flickering during agent edits.
       hmr: process.env.DISABLE_HMR !== "true",

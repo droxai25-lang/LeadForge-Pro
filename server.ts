@@ -3266,6 +3266,13 @@ app.post("/api/webhooks/delivery/:provider", webhookLimiter, async (req, res) =>
   }
 });
 
+app.get("/api/auth/config", (_req, res) => {
+  res.json({
+    success: true,
+    registrationEnabled: process.env.PUBLIC_REGISTRATION_ENABLED === "true"
+  });
+});
+
 app.post("/api/auth/register", authLimiter, async (req, res) => {
   if (process.env.PUBLIC_REGISTRATION_ENABLED !== "true") {
     return res.status(403).json({
