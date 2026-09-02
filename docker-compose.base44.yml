@@ -39,7 +39,7 @@ services:
       - OLLAMA_MODEL=llama3.2
       - HUNTER_DISCOVERY_ENABLED=false
       - HUNTER_API_KEY=
-      - OVERTURE_DISCOVERY_ENABLED=false
+      - OVERTURE_DISCOVERY_ENABLED=true
       - OVERTURE_DUCKDB_EXTENSION_DIR=/app/.runtime/duckdb_extensions
       - GEONAMES_DATA_DIR=/app/.runtime/geonames
       - CRAWL_EVIDENCE_RETENTION_DAYS=180
